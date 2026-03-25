@@ -156,7 +156,7 @@ echo "================================================"
 echo ""
 
 # Release bonfire reservation
-RELEASE_OUTPUT=$(bonfire namespace release "$NAMESPACE" 2>&1)
+RELEASE_OUTPUT=$(bonfire namespace release "$NAMESPACE" --force 2>&1)
 RELEASE_EXIT=$?
 
 if [ $RELEASE_EXIT -ne 0 ]; then

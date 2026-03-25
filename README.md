@@ -41,7 +41,7 @@ pip install crc-bonfire
 
 Verify installation:
 ```bash
-bonfire --version
+bonfire -h
 ```
 
 #### 2. Login to OpenShift Cluster
@@ -66,32 +66,30 @@ oc whoami
 #### 3. Install Plugin
 
 ```bash
-# Clone this repo into Claude Code plugins marketplace
+# Clone into Claude Code plugins marketplace directory
 cd ~/.claude/plugins/marketplaces
 git clone https://github.com/bennyturns/ephemeral-deployment-plugin.git
+```
 
-# Or create symlink to your workspace (for development)
-ln -s ~/Workspace/ephemeral-deployment-plugin ~/.claude/plugins/marketplaces/ephemeral-deployment
+For development (edits reflected immediately):
+```bash
+# Symlink your workspace clone into the marketplaces directory
+ln -s /path/to/your/ephemeral-deployment-plugin ~/.claude/plugins/marketplaces/ephemeral-deployment-plugin
 ```
 
 #### 4. Restart Claude Code
 
-Restart Claude Code to load the plugin.
+Restart Claude Code to load the plugin. The skills will be installed to `~/.claude/skills/`.
 
 #### 5. Verify Installation
 
 After restarting Claude Code, verify the skills are loaded:
 
 ```bash
-# In Claude Code, type:
-/reserve
-# Press Tab - should autocomplete to /reserve-ephemeral
-
-/deploy
-# Press Tab - should autocomplete to /deploy-to-ephemeral
-
-/release
-# Press Tab - should autocomplete to /release-ephemeral
+# In Claude Code, type / and look for:
+/reserve-ephemeral
+/deploy-to-ephemeral
+/release-ephemeral
 ```
 
 ✅ **Installation complete!** You're ready to use the plugin.
@@ -260,7 +258,7 @@ bonfire namespace extend $EPHEMERAL_NAMESPACE -d 4h
 ┌─────────────────────────────────────────────────────────────┐
 │ Skill 1: Reserve Namespace                                   │
 │                                                              │
-│  ✓ Validate: oc whoami, bonfire --version                   │
+│  ✓ Validate: oc whoami, bonfire -h                   │
 │  ✓ Reserve: bonfire namespace reserve --pool minimal        │
 │  ✓ Store: $EPHEMERAL_NAMESPACE + file                       │
 │  ✓ Output: Namespace details, console URL                   │
@@ -289,7 +287,7 @@ bonfire namespace extend $EPHEMERAL_NAMESPACE -d 4h
 │                                                              │
 │  ✓ Show: Current resources in namespace                     │
 │  ✓ Confirm: User approval                                   │
-│  ✓ Release: bonfire namespace release                       │
+│  ✓ Release: bonfire namespace release --force               │
 │  ✓ Cleanup: Remove state files, unset vars                  │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -992,6 +990,30 @@ If no commands found in README, the skill searches for:
 
 And suggests: `oc apply -f <directory>/`
 
+## Known Issues and Tips
+
+### Routes Require Edge TLS
+
+On the ephemeral cluster, plain HTTP routes (`oc expose service`) return "Application is not available." Always create routes with edge TLS termination:
+
+```bash
+# Instead of: oc expose service/my-app
+oc create route edge my-app --service=my-app --port=8080-tcp
+```
+
+The deploy skill handles this automatically.
+
+### Static Sites (Repos Without Manifests)
+
+If your repository has no Kubernetes manifests or deployment commands (e.g., a plain HTML project), the deploy skill will offer to serve it as a static site using an nginx s2i build (`registry.access.redhat.com/ubi9/nginx-122`).
+
+### bonfire CLI Notes
+
+- `bonfire -h` is not supported. Use `bonfire -h` to verify installation.
+- Both `reserve` and `release` commands use `--force` to skip interactive prompts (required for automation in Claude Code).
+
+---
+
 ## Troubleshooting
 
 ### "Not logged into OpenShift cluster"
@@ -1006,7 +1028,7 @@ oc login <cluster-url>
 **Solution:**
 ```bash
 pip install crc-bonfire
-bonfire --version
+bonfire -h
 ```
 
 ### "No namespace available"
@@ -1157,7 +1179,7 @@ git init && git add . && git commit -m "test"
 │                                         │
 │  1. Read namespace (env or file)        │
 │  2. Confirm release                     │
-│  3. bonfire namespace release           │
+│  3. bonfire namespace release --force   │
 │  4. Clean up state files                │
 └─────────────────────────────────────────┘
 ```

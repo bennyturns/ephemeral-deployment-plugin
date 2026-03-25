@@ -33,16 +33,47 @@ This Claude Code plugin provides three focused skills for managing ephemeral Ope
 - **git** - For cloning repositories
 - **Helm** (optional) - For Helm chart deployments
 
-### Install Plugin
+### Setup Steps
+
+#### 1. Install bonfire
+
+```bash
+pip install crc-bonfire
+```
+
+Verify installation:
+```bash
+bonfire --version
+```
+
+#### 2. Login to OpenShift Cluster
+
+```bash
+oc login --token=<your-token> --server=https://api.crc-eph.r9lp.p1.openshiftapps.com:6443
+```
+
+**Get your token**:
+- Visit: https://oauth-openshift.apps.crc-eph.r9lp.p1.openshiftapps.com/oauth/token/request
+- Copy the login command with your token
+- Paste into terminal
+
+Verify login:
+```bash
+oc whoami
+```
+
+#### 3. Install Plugin
 
 ```bash
 # Clone this repo into Claude Code plugins marketplace
 cd ~/.claude/plugins/marketplaces
 git clone https://github.com/bennyturns/ephemeral-deployment-plugin.git
 
-# Or create symlink to your workspace
+# Or create symlink to your workspace (for development)
 ln -s ~/Workspace/ephemeral-deployment-plugin ~/.claude/plugins/marketplaces/ephemeral-deployment
 ```
+
+#### 4. Restart Claude Code
 
 Restart Claude Code to load the plugin.
 

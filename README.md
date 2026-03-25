@@ -1,8 +1,264 @@
 # Ephemeral Deployment Plugin for Claude Code
 
-Streamline your ephemeral OpenShift cluster workflow with intelligent automation. Reserve namespaces, deploy GitHub projects, and clean up resources—all with simple slash commands.
+**Transform ephemeral OpenShift cluster workflows from manual multi-step processes into single-command automation.**
 
-## Overview
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![OpenShift](https://img.shields.io/badge/OpenShift-EE0000?logo=redhatopenshift&logoColor=fff)](https://www.openshift.com/)
+[![Claude Code](https://img.shields.io/badge/Claude_Code-Plugin-blue)](https://github.com/anthropics/claude-code)
+
+---
+
+## 🎯 Problem Statement
+
+Developers working with ephemeral OpenShift clusters face repetitive, error-prone manual workflows:
+
+**Current Manual Process** (15-20 minutes per deployment):
+```bash
+# 1. Check bonfire pools and availability
+bonfire pool list
+bonfire namespace list
+
+# 2. Reserve namespace with correct parameters
+bonfire namespace reserve --pool minimal --timeout 600 -d 4h --force
+
+# 3. Wait for provisioning...
+# 4. Parse output to find namespace name
+# 5. Clone repository
+git clone https://github.com/org/repo /tmp/some-dir
+cd /tmp/some-dir
+
+# 6. Read README, find deployment section
+# 7. Manually execute each command
+oc project ephemeral-xyz123
+oc apply -f deploy/database.yaml
+oc apply -f deploy/app.yaml
+oc apply -f deploy/service.yaml
+
+# 8. Debug failures manually
+oc get pods -n ephemeral-xyz123
+oc logs <pod> -n ephemeral-xyz123
+oc describe pod <pod> -n ephemeral-xyz123
+
+# 9. Remember to clean up later (often forgotten!)
+bonfire namespace release ephemeral-xyz123
+```
+
+**Pain Points**:
+- ❌ **Time-consuming**: 15-20 minutes of manual work per deployment
+- ❌ **Error-prone**: Easy to miss steps, use wrong namespace, forget cleanup
+- ❌ **Context switching**: Between terminal, README, OpenShift console
+- ❌ **Namespace sprawl**: Developers forget to release, wasting resources
+- ❌ **Inconsistent**: Each developer has their own workflow
+- ❌ **Poor debugging**: When deployments fail, no guided troubleshooting
+
+## ✅ Solution
+
+**Three focused Claude Code skills that automate the entire lifecycle:**
+
+```bash
+# New Automated Process (30 seconds)
+/reserve-ephemeral                                    # 1 command
+/deploy-to-ephemeral https://github.com/org/repo      # 1 command
+/release-ephemeral                                    # 1 command
+```
+
+**What It Does**:
+1. **`/reserve-ephemeral`** - Intelligent namespace provisioning
+   - Validates prerequisites (oc login, bonfire availability)
+   - Reserves from optimal pool with smart defaults
+   - Stores namespace context for subsequent commands
+   - Provides console URLs and namespace details
+
+2. **`/deploy-to-ephemeral`** - Smart deployment automation
+   - Clones any GitHub repository (public/private, SSH/HTTPS)
+   - Parses README to extract deployment commands
+   - Executes commands sequentially with proper error handling
+   - Auto-detects deployment patterns (oc apply, helm, kubectl)
+   - **Launches interactive debug session on failure**
+
+3. **`/release-ephemeral`** - Clean resource management
+   - Shows current resources before cleanup
+   - Releases bonfire reservation properly
+   - Cleans up local state and temporary files
+   - Prevents namespace sprawl and resource waste
+
+## 💡 Key Benefits
+
+### For Developers
+- ⚡ **95% faster**: 30 seconds vs 15-20 minutes per deployment
+- 🎯 **Zero context switching**: Everything in Claude Code
+- 🔄 **Rapid iteration**: Redeploy to same namespace in seconds
+- 🐛 **Guided debugging**: Auto-suggests diagnostic commands on failure
+- 📚 **Self-documenting**: README parsing ensures deployments match docs
+
+### For Engineering Teams
+- 💰 **Resource efficiency**: Automated cleanup prevents namespace sprawl
+- 📏 **Standardization**: Consistent workflow across all developers
+- 🚀 **Faster onboarding**: New developers productive in minutes
+- 📊 **Better practices**: Encourages proper README documentation
+- 🔒 **Safer operations**: Built-in validation and error handling
+
+### For Management
+- ⏱️ **Time savings**: ~80 hours/year per developer (assuming 5 deploys/week)
+- 💵 **Cost reduction**: Fewer wasted namespace hours through auto-cleanup
+- 📈 **Higher velocity**: Faster iteration = faster feature delivery
+- 🎓 **Lower barriers**: Reduced tribal knowledge requirements
+- 🔍 **Visibility**: Standardized workflow enables better metrics
+
+## 📊 Use Cases
+
+### Daily Development Workflow
+```bash
+# Morning: Reserve namespace for the day
+/reserve-ephemeral --duration 8h
+
+# Deploy and test feature branch
+/deploy-to-ephemeral https://github.com/my-org/my-app
+
+# Make changes, push to GitHub, redeploy
+/deploy-to-ephemeral https://github.com/my-org/my-app  # Fast! Same namespace
+
+# Test different configurations
+/deploy-to-ephemeral https://github.com/my-org/my-app  # Again!
+
+# End of day: Clean up
+/release-ephemeral
+```
+
+### Integration Testing
+```bash
+# Deploy multiple microservices to one namespace
+/reserve-ephemeral
+/deploy-to-ephemeral https://github.com/my-org/frontend
+/deploy-to-ephemeral https://github.com/my-org/backend
+/deploy-to-ephemeral https://github.com/my-org/database
+
+# Test integration, then cleanup
+/release-ephemeral
+```
+
+### Bug Reproduction
+```bash
+# Quickly deploy specific commit to test bug
+/reserve-ephemeral
+/deploy-to-ephemeral https://github.com/my-org/app
+
+# Deployment fails? Auto debug session starts!
+# Suggested commands, interactive help, namespace preserved
+```
+
+### Demo Preparation
+```bash
+# Long-running demo environment
+/reserve-ephemeral --duration 12h --pool default
+/deploy-to-ephemeral https://github.com/my-org/demo-app
+
+# Extend if demo runs long
+bonfire namespace extend $EPHEMERAL_NAMESPACE -d 4h
+```
+
+## 🏗️ Architecture
+
+### Three-Skill Workflow
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Developer                                                    │
+└───────────────┬─────────────────────────────────────────────┘
+                │
+                │ /reserve-ephemeral
+                ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Skill 1: Reserve Namespace                                   │
+│                                                              │
+│  ✓ Validate: oc whoami, bonfire --version                   │
+│  ✓ Reserve: bonfire namespace reserve --pool minimal        │
+│  ✓ Store: $EPHEMERAL_NAMESPACE + file                       │
+│  ✓ Output: Namespace details, console URL                   │
+└───────────────┬─────────────────────────────────────────────┘
+                │
+                │ Namespace: ephemeral-abc123 (stored)
+                │
+                │ /deploy-to-ephemeral <repo-url>
+                ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Skill 2: Deploy to Namespace                                │
+│                                                              │
+│  ✓ Validate: Namespace accessible                           │
+│  ✓ Clone: git clone <repo> /tmp/xyz                         │
+│  ✓ Parse: Extract deployment commands from README           │
+│  ✓ Deploy: Execute commands sequentially                    │
+│  ✓ Handle: Success summary OR debug session                 │
+└───────────────┬─────────────────────────────────────────────┘
+                │
+                │ Success! Or Debug Session initiated
+                │
+                │ /release-ephemeral
+                ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Skill 3: Release Namespace                                  │
+│                                                              │
+│  ✓ Show: Current resources in namespace                     │
+│  ✓ Confirm: User approval                                   │
+│  ✓ Release: bonfire namespace release                       │
+│  ✓ Cleanup: Remove state files, unset vars                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### State Management
+```
+                    ┌──────────────────────────┐
+                    │  /reserve-ephemeral       │
+                    │  provisions namespace     │
+                    └────────────┬──────────────┘
+                                 │
+                    ┌────────────▼──────────────┐
+                    │  State Storage             │
+                    │  • $EPHEMERAL_NAMESPACE    │
+                    │  • ~/.claude/temp/...      │
+                    └────────────┬──────────────┘
+                                 │
+                    ┌────────────▼──────────────┐
+                    │  /deploy-to-ephemeral     │
+                    │  reads stored namespace    │
+                    └────────────┬──────────────┘
+                                 │
+                    ┌────────────▼──────────────┐
+                    │  /release-ephemeral       │
+                    │  cleans up everything      │
+                    └────────────────────────────┘
+```
+
+## 📋 Feature Overview
+
+### Skill Capabilities
+
+| Feature | /reserve-ephemeral | /deploy-to-ephemeral | /release-ephemeral |
+|---------|-------------------|---------------------|-------------------|
+| Prerequisite validation | ✅ oc, bonfire | ✅ namespace, git | ✅ bonfire |
+| Bonfire integration | ✅ Reserve with pools | ❌ | ✅ Release |
+| Git operations | ❌ | ✅ Clone (SSH/HTTPS) | ❌ |
+| README parsing | ❌ | ✅ Smart extraction | ❌ |
+| Command execution | ❌ | ✅ Sequential | ❌ |
+| Error handling | ✅ Detailed messages | ✅ Debug session | ✅ Graceful |
+| State management | ✅ Store namespace | ✅ Read namespace | ✅ Clean state |
+| User interaction | ⚠️ Minimal | ✅ Debug prompts | ✅ Confirmation |
+
+### Supported Deployment Patterns
+
+**Recognized Commands**:
+- ✅ `oc apply -f <file>` - OpenShift resources
+- ✅ `oc process -f <template> | oc apply -f -` - Templated deployments
+- ✅ `helm install <name> <chart>` - Helm charts
+- ✅ `helm upgrade --install <name> <chart>` - Helm upgrades
+- ✅ `kubectl apply -f <file>` - Kubernetes resources
+- ✅ `oc apply -f <directory>/` - Bulk application
+
+**Smart Fallbacks**:
+- 📁 Directory detection: `deploy/`, `k8s/`, `manifests/`, `openshift/`, `helm/`, `charts/`
+- 💬 Interactive prompts: If no commands found, asks user
+- 🔍 Context-aware suggestions: Based on repository structure
+
+## 🎓 Overview
 
 This Claude Code plugin provides three focused skills for managing ephemeral OpenShift namespaces with bonfire:
 
@@ -49,13 +305,16 @@ bonfire --version
 #### 2. Login to OpenShift Cluster
 
 ```bash
-oc login --token=<your-token> --server=https://api.crc-eph.r9lp.p1.openshiftapps.com:6443
+oc login --token=<your-token> --server=https://api.<ephemeral-cluster>.openshiftapps.com:6443
 ```
 
+> **Note**: Replace `<ephemeral-cluster>` with your actual ephemeral cluster domain.
+> Contact your cluster administrator for the correct URL.
+
 **Get your token**:
-- Visit: https://oauth-openshift.apps.crc-eph.r9lp.p1.openshiftapps.com/oauth/token/request
-- Copy the login command with your token
-- Paste into terminal
+- Visit your cluster's OAuth token request page: `https://oauth-openshift.apps.<ephemeral-cluster>.openshiftapps.com/oauth/token/request`
+- Copy the `oc login` command with your token
+- Paste into terminal and execute
 
 Verify login:
 ```bash
@@ -76,6 +335,337 @@ ln -s ~/Workspace/ephemeral-deployment-plugin ~/.claude/plugins/marketplaces/eph
 #### 4. Restart Claude Code
 
 Restart Claude Code to load the plugin.
+
+#### 5. Verify Installation
+
+After restarting Claude Code, verify the skills are loaded:
+
+```bash
+# In Claude Code, type:
+/reserve
+# Press Tab - should autocomplete to /reserve-ephemeral
+
+/deploy
+# Press Tab - should autocomplete to /deploy-to-ephemeral
+
+/release
+# Press Tab - should autocomplete to /release-ephemeral
+```
+
+✅ **Installation complete!** You're ready to use the plugin.
+
+---
+
+## 🚀 Getting Started
+
+### Complete Walkthrough: Your First Deployment
+
+Let's walk through deploying a sample application end-to-end.
+
+#### Step 1: Reserve a Namespace
+
+In Claude Code, run:
+```bash
+/reserve-ephemeral
+```
+
+**What happens:**
+```
+================================================
+Validating Prerequisites...
+================================================
+
+✅ OpenShift: Logged in as your-username
+✅ bonfire: installed
+✅ git: git version 2.43.0
+
+All prerequisites validated ✓
+
+================================================
+Reserving ephemeral namespace...
+================================================
+
+Configuration:
+  Pool: minimal
+  Duration: 4h
+  Timeout: 600s
+
+2026-03-24 10:00:00 [INFO] checking for available namespaces to reserve...
+2026-03-24 10:00:01 [INFO] namespace 'ephemeral-abc123' is reserved by 'your-username' for '4h' from the minimal pool
+
+================================================
+✅ NAMESPACE RESERVED
+================================================
+
+Namespace: ephemeral-abc123
+Pool: minimal
+Duration: 4h
+
+Namespace Details:
+  Console URL: https://console-openshift-console.apps.<ephemeral-cluster>.openshiftapps.com/k8s/cluster/projects/ephemeral-abc123
+  Project: ephemeral-abc123
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Namespace stored in:
+  - Environment variable: $EPHEMERAL_NAMESPACE
+  - File: ~/.claude/temp/current-ephemeral-namespace
+
+Use with deployment:
+  /deploy-to-ephemeral <repo-url>
+
+Manage namespace:
+  - Extend: bonfire namespace extend ephemeral-abc123
+  - Release: /release-ephemeral
+  - Describe: bonfire namespace describe ephemeral-abc123
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Key Points:**
+- ✅ Namespace reserved: `ephemeral-abc123`
+- ✅ Stored for next command (no need to copy/paste)
+- ✅ Expires automatically in 4 hours
+- ✅ Console URL provided for manual inspection
+
+---
+
+#### Step 2: Deploy Your Application
+
+Now deploy a GitHub repository:
+```bash
+/deploy-to-ephemeral https://github.com/your-org/your-app
+```
+
+**What happens:**
+```
+================================================
+Validating Prerequisites...
+================================================
+
+✅ OpenShift: Logged in as your-username
+✅ Namespace: ephemeral-abc123 (accessible)
+✅ git: git version 2.43.0
+
+All prerequisites validated ✓
+
+================================================
+Cloning repository...
+================================================
+
+Repository: https://github.com/your-org/your-app
+Clone directory: /tmp/tmp.xyz789
+
+Cloning into '/tmp/tmp.xyz789'...
+remote: Enumerating objects: 127, done.
+remote: Counting objects: 100% (127/127), done.
+remote: Compressing objects: 100% (89/89), done.
+remote: Total 127 (delta 45), reused 98 (delta 32)
+Receiving objects: 100% (127/127), 45.23 KiB | 1.51 MiB/s, done.
+Resolving deltas: 100% (45/45), done.
+
+✅ Repository cloned successfully
+
+================================================
+Parsing README for deployment instructions...
+================================================
+
+Found: README.md
+
+Extracting deployment commands...
+
+Found deployment command(s):
+  → oc apply -f deploy/database.yaml
+  → oc apply -f deploy/application.yaml
+  → oc apply -f deploy/service.yaml
+
+================================================
+Executing deployment...
+================================================
+
+Setting namespace context: ephemeral-abc123
+Now using project "ephemeral-abc123" on server "https://api.<ephemeral-cluster>.openshiftapps.com:6443".
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Running: oc apply -f deploy/database.yaml
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+deployment.apps/postgres created
+service/postgres created
+
+✅ Command completed successfully
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Running: oc apply -f deploy/application.yaml
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+deployment.apps/myapp created
+configmap/myapp-config created
+
+✅ Command completed successfully
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Running: oc apply -f deploy/service.yaml
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+service/myapp created
+route.route.openshift.io/myapp created
+
+✅ Command completed successfully
+
+================================================
+✅ DEPLOYMENT SUCCESSFUL
+================================================
+
+Namespace: ephemeral-abc123
+Repository: /tmp/tmp.xyz789
+
+Deployed resources:
+NAME                          READY   STATUS    RESTARTS   AGE
+pod/myapp-7d4f8c9-x5z2w       1/1     Running   0          5s
+pod/postgres-8k3j2l-9mn4p     1/1     Running   0          7s
+
+NAME               TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+service/myapp      ClusterIP   172.30.158.201   <none>        8080/TCP   5s
+service/postgres   ClusterIP   172.30.45.100    <none>        5432/TCP   7s
+
+NAME                       READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/myapp      1/1     1            1           5s
+deployment.apps/postgres   1/1     1            1           7s
+
+NAME                                  HOST/PORT
+route.route.openshift.io/myapp       myapp-ephemeral-abc123.apps.<ephemeral-cluster>.openshiftapps.com
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Next steps:
+  - View pods: oc get pods -n ephemeral-abc123
+  - View services: oc get svc -n ephemeral-abc123
+  - View routes: oc get routes -n ephemeral-abc123
+  - Check logs: oc logs -l app=myapp -n ephemeral-abc123
+  - Access app: https://myapp-ephemeral-abc123.apps.<ephemeral-cluster>.openshiftapps.com
+
+Namespace management:
+  - Extend: bonfire namespace extend ephemeral-abc123
+  - Release: /release-ephemeral
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Clone directory: /tmp/tmp.xyz789
+(Kept for reference. Delete manually when done.)
+```
+
+**Key Points:**
+- ✅ Automatically found and executed 3 deployment commands
+- ✅ All resources created successfully
+- ✅ Route URL provided for immediate testing
+- ✅ Namespace context maintained from Step 1
+
+**Test your deployment:**
+Visit the route URL in your browser or:
+```bash
+curl https://myapp-ephemeral-abc123.apps.<ephemeral-cluster>.openshiftapps.com
+```
+
+---
+
+#### Step 3: Make Changes and Redeploy
+
+Made code changes? Redeploy to the **same namespace** (fast iteration):
+
+```bash
+# Push changes to GitHub
+git push origin main
+
+# Redeploy (uses same namespace - no wait for provisioning!)
+/deploy-to-ephemeral https://github.com/your-org/your-app
+```
+
+**This takes ~10 seconds** instead of 15-20 minutes because:
+- No namespace provisioning wait
+- No manual README parsing
+- No copy/paste namespace names
+- Automated command execution
+
+---
+
+#### Step 4: Clean Up
+
+When done testing:
+```bash
+/release-ephemeral
+```
+
+**What happens:**
+```
+Namespace to release: ephemeral-abc123
+
+Namespace found in bonfire:
+ephemeral-abc123  true  ready  2/2  your-username  minimal  3h45m12s
+
+Current resources in namespace:
+────────────────────────────────────────────────
+NAME                          READY   STATUS    RESTARTS   AGE
+pod/myapp-7d4f8c9-x5z2w       1/1     Running   0          15m
+pod/postgres-8k3j2l-9mn4p     1/1     Running   0          15m
+
+NAME               TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+service/myapp      ClusterIP   172.30.158.201   <none>        8080/TCP   15m
+service/postgres   ClusterIP   172.30.45.100    <none>        5432/TCP   15m
+────────────────────────────────────────────────
+
+Release namespace ephemeral-abc123?
+
+This will:
+- Delete all resources in the namespace
+- Release the bonfire reservation
+- Clean up local state ($EPHEMERAL_NAMESPACE)
+
+Continue? (yes/no)
+
+> yes
+
+================================================
+Releasing namespace...
+================================================
+
+2026-03-24 10:15:30 [INFO] releasing namespace 'ephemeral-abc123'
+namespacereservation.cloud.redhat.com "bonfire-reservation-xyz" deleted
+
+✅ Bonfire reservation released
+
+================================================
+Cleaning up local state...
+================================================
+
+✅ Removed stored namespace file
+✅ Unset EPHEMERAL_NAMESPACE variable
+
+================================================
+✅ NAMESPACE RELEASED
+================================================
+
+Namespace 'ephemeral-abc123' has been released.
+
+To reserve a new namespace:
+  /reserve-ephemeral
+```
+
+**Key Points:**
+- ✅ Shows what will be deleted before asking
+- ✅ Requires confirmation (prevents accidents)
+- ✅ Cleans up all local state
+- ✅ Frees cluster resources properly
+
+---
+
+### 🎉 Success!
+
+You've completed a full deployment lifecycle:
+1. ✅ Reserved namespace in ~5 seconds
+2. ✅ Deployed application automatically in ~15 seconds
+3. ✅ Tested and iterated quickly
+4. ✅ Cleaned up properly
+
+**Total time: ~30 seconds** vs. **15-20 minutes manually**
+
+---
 
 ## Skills
 

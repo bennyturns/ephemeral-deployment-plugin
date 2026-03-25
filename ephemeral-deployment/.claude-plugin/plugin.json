@@ -1,0 +1,8 @@
+{
+  "name": "ephemeral-deployment",
+  "description": "Reserve ephemeral namespaces, deploy GitHub projects via bonfire, and release namespaces",
+  "version": "0.1.0",
+  "author": {
+    "name": "Ben Turner"
+  }
+}

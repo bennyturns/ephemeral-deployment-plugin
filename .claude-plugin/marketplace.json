@@ -1,0 +1,15 @@
+{
+  "name": "ephemeral-deployment-plugin",
+  "description": "Bonfire ephemeral cluster workflow automation - reserve namespaces, deploy GitHub projects, and cleanup with intelligent README parsing",
+  "owner": {
+    "name": "Ben Turner",
+    "url": "https://github.com/bennyturns"
+  },
+  "plugins": [
+    {
+      "name": "ephemeral-deployment",
+      "source": "./ephemeral-deployment",
+      "description": "Reserve ephemeral namespaces, deploy GitHub projects via bonfire, and release namespaces"
+    }
+  ]
+}

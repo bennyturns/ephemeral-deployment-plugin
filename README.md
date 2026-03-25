@@ -8,6 +8,96 @@
 
 ---
 
+## Quick Start
+
+```bash
+# 1. Reserve namespace (once per session)
+/reserve-ephemeral
+
+# 2. Deploy your project (multiple times)
+/deploy-to-ephemeral https://github.com/my-org/my-app
+
+# 3. Clean up when done
+/release-ephemeral
+```
+
+## Installation
+
+### Prerequisites
+
+- **Claude Code CLI** installed and configured
+- **OpenShift CLI (`oc`)** - Must be logged into cluster
+- **bonfire** - `pip install crc-bonfire` (v6.8.2+)
+- **git** - For cloning repositories
+- **Helm** (optional) - For Helm chart deployments
+
+### Setup Steps
+
+#### 1. Install bonfire
+
+```bash
+pip install crc-bonfire
+```
+
+Verify installation:
+```bash
+bonfire --version
+```
+
+#### 2. Login to OpenShift Cluster
+
+```bash
+oc login --token=<your-token> --server=https://api.<ephemeral-cluster>.openshiftapps.com:6443
+```
+
+> **Note**: Replace `<ephemeral-cluster>` with your actual ephemeral cluster domain.
+> Contact your cluster administrator for the correct URL.
+
+**Get your token**:
+- Visit your cluster's OAuth token request page: `https://oauth-openshift.apps.<ephemeral-cluster>.openshiftapps.com/oauth/token/request`
+- Copy the `oc login` command with your token
+- Paste into terminal and execute
+
+Verify login:
+```bash
+oc whoami
+```
+
+#### 3. Install Plugin
+
+```bash
+# Clone this repo into Claude Code plugins marketplace
+cd ~/.claude/plugins/marketplaces
+git clone https://github.com/bennyturns/ephemeral-deployment-plugin.git
+
+# Or create symlink to your workspace (for development)
+ln -s ~/Workspace/ephemeral-deployment-plugin ~/.claude/plugins/marketplaces/ephemeral-deployment
+```
+
+#### 4. Restart Claude Code
+
+Restart Claude Code to load the plugin.
+
+#### 5. Verify Installation
+
+After restarting Claude Code, verify the skills are loaded:
+
+```bash
+# In Claude Code, type:
+/reserve
+# Press Tab - should autocomplete to /reserve-ephemeral
+
+/deploy
+# Press Tab - should autocomplete to /deploy-to-ephemeral
+
+/release
+# Press Tab - should autocomplete to /release-ephemeral
+```
+
+✅ **Installation complete!** You're ready to use the plugin.
+
+---
+
 ## 🎯 Problem Statement
 
 Developers working with ephemeral OpenShift clusters face repetitive, error-prone manual workflows:
@@ -257,104 +347,6 @@ bonfire namespace extend $EPHEMERAL_NAMESPACE -d 4h
 - 📁 Directory detection: `deploy/`, `k8s/`, `manifests/`, `openshift/`, `helm/`, `charts/`
 - 💬 Interactive prompts: If no commands found, asks user
 - 🔍 Context-aware suggestions: Based on repository structure
-
-## 🎓 Overview
-
-This Claude Code plugin provides three focused skills for managing ephemeral OpenShift namespaces with bonfire:
-
-1. **`/reserve-ephemeral`** - Provision ephemeral namespace
-2. **`/deploy-to-ephemeral`** - Deploy GitHub projects with smart README parsing
-3. **`/release-ephemeral`** - Clean up namespaces and local state
-
-## Quick Start
-
-```bash
-# 1. Reserve namespace (once per session)
-/reserve-ephemeral
-
-# 2. Deploy your project (multiple times)
-/deploy-to-ephemeral https://github.com/my-org/my-app
-
-# 3. Clean up when done
-/release-ephemeral
-```
-
-## Installation
-
-### Prerequisites
-
-- **Claude Code CLI** installed and configured
-- **OpenShift CLI (`oc`)** - Must be logged into cluster
-- **bonfire** - `pip install crc-bonfire` (v6.8.2+)
-- **git** - For cloning repositories
-- **Helm** (optional) - For Helm chart deployments
-
-### Setup Steps
-
-#### 1. Install bonfire
-
-```bash
-pip install crc-bonfire
-```
-
-Verify installation:
-```bash
-bonfire --version
-```
-
-#### 2. Login to OpenShift Cluster
-
-```bash
-oc login --token=<your-token> --server=https://api.<ephemeral-cluster>.openshiftapps.com:6443
-```
-
-> **Note**: Replace `<ephemeral-cluster>` with your actual ephemeral cluster domain.
-> Contact your cluster administrator for the correct URL.
-
-**Get your token**:
-- Visit your cluster's OAuth token request page: `https://oauth-openshift.apps.<ephemeral-cluster>.openshiftapps.com/oauth/token/request`
-- Copy the `oc login` command with your token
-- Paste into terminal and execute
-
-Verify login:
-```bash
-oc whoami
-```
-
-#### 3. Install Plugin
-
-```bash
-# Clone this repo into Claude Code plugins marketplace
-cd ~/.claude/plugins/marketplaces
-git clone https://github.com/bennyturns/ephemeral-deployment-plugin.git
-
-# Or create symlink to your workspace (for development)
-ln -s ~/Workspace/ephemeral-deployment-plugin ~/.claude/plugins/marketplaces/ephemeral-deployment
-```
-
-#### 4. Restart Claude Code
-
-Restart Claude Code to load the plugin.
-
-#### 5. Verify Installation
-
-After restarting Claude Code, verify the skills are loaded:
-
-```bash
-# In Claude Code, type:
-/reserve
-# Press Tab - should autocomplete to /reserve-ephemeral
-
-/deploy
-# Press Tab - should autocomplete to /deploy-to-ephemeral
-
-/release
-# Press Tab - should autocomplete to /release-ephemeral
-```
-
-✅ **Installation complete!** You're ready to use the plugin.
-
----
 
 ## 🚀 Getting Started
 

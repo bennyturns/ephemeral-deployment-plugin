@@ -243,17 +243,29 @@ if [ -z "$README_FILE" ]; then
         echo "No README found. Please provide deployment commands manually."
         exit 1
     else
-        echo "No deployment directories found."
-        echo "Please provide deployment commands manually."
-        exit 1
+        # Check for static web content even without README
+        HTML_FILES=$(find . -maxdepth 2 -name "*.html" -type f 2>/dev/null)
+        if [ -n "$HTML_FILES" ]; then
+            echo "No README or deploy directories, but found static HTML content."
+            echo "Will deploy as static site using nginx s2i."
+            echo ""
+            # Skip README parsing, go straight to static site deployment
+            README_FILE=""
+        else
+            echo "No deployment directories or static content found."
+            echo "Please provide deployment commands manually."
+            exit 1
+        fi
     fi
 fi
 
-echo "Found: $README_FILE"
-echo ""
+if [ -n "$README_FILE" ]; then
+    echo "Found: $README_FILE"
+    echo ""
+fi
 ```
 
-Use the `Read` tool to read the README:
+If a README was found, use the `Read` tool to read it:
 
 ```
 Read the README file at $CLONE_DIR/$README_FILE
@@ -262,28 +274,32 @@ Read the README file at $CLONE_DIR/$README_FILE
 Then extract deployment commands:
 
 ```bash
-# Extract deployment commands from README
-# Look for oc apply, helm install, kubectl apply commands
-
-echo "Extracting deployment commands..."
-echo ""
-
 # Create temp file for commands
 COMMANDS_FILE=$(mktemp)
 
-# Search for deployment commands in code blocks
-# Pattern 1: oc apply -f <file>
-# Pattern 2: oc process -f <file> | oc apply -f -
-# Pattern 3: helm install <name> <chart>
-# Pattern 4: kubectl apply -f <file>
+if [ -n "$README_FILE" ]; then
+    # Extract deployment commands from README
+    # Look for oc apply, helm install, kubectl apply commands
 
-grep -E '^\s*(oc|kubectl)\s+apply\s+-f' "$README_FILE" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' >> "$COMMANDS_FILE"
-grep -E '^\s*oc\s+process.*\|.*oc\s+apply' "$README_FILE" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' >> "$COMMANDS_FILE"
-grep -E '^\s*helm\s+(install|upgrade)' "$README_FILE" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' >> "$COMMANDS_FILE"
+    echo "Extracting deployment commands..."
+    echo ""
+
+    # Search for deployment commands in code blocks
+    # Pattern 1: oc apply -f <file>
+    # Pattern 2: oc process -f <file> | oc apply -f -
+    # Pattern 3: helm install <name> <chart>
+    # Pattern 4: kubectl apply -f <file>
+
+    grep -E '^\s*(oc|kubectl)\s+apply\s+-f' "$README_FILE" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' >> "$COMMANDS_FILE"
+    grep -E '^\s*oc\s+process.*\|.*oc\s+apply' "$README_FILE" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' >> "$COMMANDS_FILE"
+    grep -E '^\s*helm\s+(install|upgrade)' "$README_FILE" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' >> "$COMMANDS_FILE"
+fi
 
 if [ ! -s "$COMMANDS_FILE" ]; then
-    echo "⚠️  No deployment commands found in README"
-    echo ""
+    if [ -n "$README_FILE" ]; then
+        echo "⚠️  No deployment commands found in README"
+        echo ""
+    fi
 
     # Fall back to directory search
     DEPLOY_DIRS=()
@@ -301,9 +317,28 @@ if [ ! -s "$COMMANDS_FILE" ]; then
             echo "oc apply -f $dir/" >> "$COMMANDS_FILE"
         done
     else
-        echo "No deployment commands or directories found."
-        echo "Please provide deployment commands manually."
-        exit 1
+        # Check for static web content (HTML files)
+        HTML_FILES=$(find . -maxdepth 2 -name "*.html" -type f 2>/dev/null)
+        if [ -n "$HTML_FILES" ]; then
+            echo "Detected static web content (HTML files):"
+            echo "$HTML_FILES" | head -10
+            echo ""
+
+            # Derive app name from repo directory name
+            APP_NAME=$(basename "$REPO_URL" .git | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')
+            echo "Deploying as static site using nginx s2i..."
+            echo "App name: $APP_NAME"
+            echo ""
+
+            echo "oc new-app registry.access.redhat.com/ubi9/nginx-122~. --name=$APP_NAME" >> "$COMMANDS_FILE"
+            echo "sleep 5" >> "$COMMANDS_FILE"
+            echo "oc wait --for=condition=available deployment/$APP_NAME --timeout=120s" >> "$COMMANDS_FILE"
+            echo "oc create route edge $APP_NAME --service=$APP_NAME --port=8080-tcp" >> "$COMMANDS_FILE"
+        else
+            echo "No deployment commands, directories, or static content found."
+            echo "Please provide deployment commands manually."
+            exit 1
+        fi
     fi
 fi
 
